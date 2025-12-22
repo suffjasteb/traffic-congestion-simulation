@@ -1,0 +1,7 @@
+Scenario,Avg Max Queue,Std Dev,Avg Waiting Time,Service Rate,Prob Severe Jam,Avg Accidents/Hour
+Baseline (Current),408.93,65.99,20.38,47.07%,100.00%,2.11
+Optimized Traffic Light,251.17,78.21,12.87,71.23%,99.50%,2.09
+Heavy Traffic Day,1067.37,71.02,27.98,21.53%,100.00%,2.48
+Accident-Prone Area,554.77,53.43,25.87,28.11%,100.00%,2.90
+Ideal Conditions,27.95,12.39,0.79,99.91%,0.00%,0.58
+Weekend Traffic,39.06,24.02,2.35,95.77%,1.70%,1.50

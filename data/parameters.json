@@ -1,0 +1,5 @@
+{
+    "arrival_rate": [5,15],
+    "green_capacity": 8,
+    "cycles_per_hour": 60
+}

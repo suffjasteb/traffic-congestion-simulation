@@ -1,0 +1,8 @@
+metric,value
+avg_max_queue,122.039
+min_max_queue,55
+max_max_queue,201
+avg_final_queue,120.661
+min_final_queue,47
+max_final_queue,201
+prob_severe_jam,0.531
