@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Monte Carlo Simulator</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🚦 Traffic Monte Carlo Simulator</h1>
+            <p class="subtitle">Advanced Traffic Flow Analysis & Optimization</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Left Panel - Controls -->
+            <div class="panel controls-panel">
+                <h2>Simulation Controls</h2>
+                
+                <!-- Scenario Selection -->
+                <div class="control-group">
+                    <label>Select Scenario</label>
+                    <select id="scenarioSelect" onchange="loadScenario()">
+                        <option value="baseline">Baseline (Current)</option>
+                        <option value="optimized">Optimized Traffic Light</option>
+                        <option value="heavy_traffic">Heavy Traffic Day</option>
+                        <option value="accident_prone">Accident-Prone Area</option>
+                        <option value="ideal_conditions">Ideal Conditions</option>
+                        <option value="weekend">Weekend Traffic</option>
+                        <option value="custom">Custom Parameters</option>
+                    </select>
+                </div>
+
+                <!-- Parameters -->
+                <div id="customParams" style="display: none;">
+                    <div class="control-group">
+                        <label>Rush Hour Rate (vehicles/min)</label>
+                        <div class="range-input">
+                            <input type="number" id="rushMin" value="12" min="1" max="50">
+                            <span>to</span>
+                            <input type="number" id="rushMax" value="25" min="1" max="50">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Normal Rate (vehicles/min)</label>
+                        <div class="range-input">
+                            <input type="number" id="normalMin" value="5" min="1" max="30">
+                            <span>to</span>
+                            <input type="number" id="normalMax" value="15" min="1" max="30">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Green Light Capacity</label>
+                        <input type="number" id="greenCapacity" value="8" min="1" max="20">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Accident Probability (%)</label>
+                        <input type="range" id="accidentProb" min="0" max="20" value="5" step="1" oninput="document.getElementById('accidentProbVal').innerText = this.value + '%'">
+                        <span id="accidentProbVal">5%</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Rush Hour Duration (min)</label>
+                        <input type="number" id="rushDuration" value="20" min="5" max="60">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Number of Simulations</label>
+                    <input type="number" id="simCount" value="1000" min="100" max="10000" step="100">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="runSimulation()">
+                        <span id="btnText">▶ Run Simulation</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="compareScenarios()">
+                        📊 Compare Scenarios
+                    </button>
+                </div>
+
+                <!-- Scenario Description -->
+                <div id="scenarioDesc" class="info-box">
+                    <strong>Current Scenario:</strong>
+                    <p id="descText">Baseline traffic configuration</p>
+                </div>
+            </div>
+
+            <!-- Right Panel - Results -->
+            <div class="panel results-panel">
+                <h2>Simulation Results</h2>
+                
+                <!-- Loading State -->
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Running simulation...</p>
+                </div>
+
+                <!-- Results Display -->
+                <div id="results" style="display: none;">
+                    
+                    <!-- Key Metrics Cards -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Max Queue</div>
+                            <div class="metric-value" id="avgQueue">-</div>
+                            <div class="metric-unit">vehicles</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Waiting Time</div>
+                            <div class="metric-value" id="avgWait">-</div>
+                            <div class="metric-unit">minutes</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">Service Rate</div>
+                            <div class="metric-value" id="serviceRate">-</div>
+                            <div class="metric-unit">%</div>
+                        </div>
+                        
+                        <div class="metric-card" id="trafficLevelCard">
+                            <div class="metric-label">Traffic Level</div>
+                            <div class="metric-value" id="trafficLevel">-</div>
+                            <div class="metric-unit" id="trafficDesc">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Probabilities -->
+                    <div class="probability-section">
+                        <h3>Congestion Probabilities</h3>
+                        <div class="prob-bars">
+                            <div class="prob-bar">
+                                <span class="prob-label">Light Traffic</span>
+                                <div class="prob-fill-container">
+                                    <div class="prob-fill" id="probLight" style="width: 0%; background: #4CAF50;"></div>
+                                </div>
+                                <span class="prob-value" id="probLightVal">0%</span>
+                            </div>
+                            
+                            <div class="prob-bar">
+                                <span class="prob-label">Moderate</span>
+                                <div class="prob-fill-container">
+                                    <div class="prob-fill" id="probModerate" style="width: 0%; background: #FFC107;"></div>
+                                </div>
+                                <span class="prob-value" id="probModerateVal">0%</span>
+                            </div>
+                            
+                            <div class="prob-bar">
+                                <span class="prob-label">Severe Jam</span>
+                                <div class="prob-fill-container">
+                                    <div class="prob-fill" id="probSevere" style="width: 0%; background: #F44336;"></div>
+                                </div>
+                                <span class="prob-value" id="probSevereVal">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="charts-section">
+                        <div class="chart-container">
+                            <h3>Queue Distribution</h3>
+                            <canvas id="histogramChart"></canvas>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <h3>Queue Over Time (Sample Run)</h3>
+                            <canvas id="timeSeriesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div id="recommendations" class="recommendations-section">
+                        <h3>💡 Recommendations</h3>
+                        <div id="recommendationsList"></div>
+                    </div>
+
+                </div>
+
+                <!-- Comparison Results -->
+                <div id="comparisonResults" style="display: none;">
+                    <h3>Scenario Comparison</h3>
+                    <div class="chart-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                    <div id="comparisonTable"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/diagram.js"></script>
+</body>
+</html>
