@@ -444,7 +444,228 @@ function createComparisonTable(data) {
     container.innerHTML = html;
 }
 
+// ============ ADVANCED FEATURES ============
+
+// Export to Excel
+async function exportToExcel(resultData, scenarioName) {
+    try {
+        const response = await fetch('/export/excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                result_data: resultData,
+                scenario_name: scenarioName
+            })
+        });
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${scenarioName}_${Date.now()}.xlsx`;
+        a.click();
+        
+        alert('Excel file downloaded successfully!');
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('Export failed. Please try again.');
+    }
+}
+
+// Export to PDF
+async function exportToPDF(resultData, scenarioName) {
+    try {
+        const response = await fetch('/export/pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                result_data: resultData,
+                scenario_name: scenarioName
+            })
+        });
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${scenarioName}_report_${Date.now()}.pdf`;
+        a.click();
+        
+        alert('PDF report downloaded successfully!');
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('Export failed. Please try again.');
+    }
+}
+
+// View History
+async function viewHistory() {
+    try {
+        const response = await fetch('/history/recent?limit=20');
+        const history = await response.json();
+        
+        // Create modal or new section to display history
+        let html = '<div class="history-modal"><h3>Recent Simulations</h3><table>';
+        html += '<tr><th>Time</th><th>Scenario</th><th>Avg Queue</th><th>Service Rate</th></tr>';
+        
+        history.forEach(record => {
+            const timestamp = new Date(record.timestamp).toLocaleString();
+            html += `<tr>
+                <td>${timestamp}</td>
+                <td>${record.scenario_name}</td>
+                <td>${record.avg_max_queue.toFixed(1)}</td>
+                <td>${(record.avg_service_rate * 100).toFixed(1)}%</td>
+            </tr>`;
+        });
+        
+        html += '</table><button onclick="closeHistory()">Close</button></div>';
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+    } catch (error) {
+        console.error('History error:', error);
+        alert('Failed to load history.');
+    }
+}
+
+function closeHistory() {
+    const modal = document.querySelector('.history-modal');
+    if (modal) modal.remove();
+}
+
+// Network Simulation
+async function simulateNetwork() {
+    const networkType = prompt('Enter network type: simple_two_intersection, four_way_grid, or highway_corridor', 'simple_two_intersection');
+    
+    if (!networkType) return;
+    
+    document.getElementById('loading').style.display = 'block';
+    
+    try {
+        const response = await fetch(`/network/simulate/${networkType}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ simulations: 100 })
+        });
+        
+        const data = await response.json();
+        displayNetworkResults(data);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Network simulation failed.');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function displayNetworkResults(data) {
+    let html = '<div class="network-results"><h3>Network Simulation Results</h3>';
+    
+    // Per intersection
+    html += '<h4>Individual Intersections:</h4>';
+    for (const [intId, metrics] of Object.entries(data.intersections)) {
+        html += `<div class="intersection-card">
+            <strong>Intersection ${intId}</strong><br>
+            Avg Max Queue: ${metrics.avg_max_queue.toFixed(1)} vehicles<br>
+            Waiting Time: ${metrics.avg_waiting_time.toFixed(2)} min<br>
+            Service Rate: ${(metrics.avg_service_rate * 100).toFixed(1)}%
+        </div>`;
+    }
+    
+    // Network summary
+    html += '<h4>Network Summary:</h4>';
+    html += `<p>Total Avg Max Queue: ${data.network_summary.avg_total_max_queue.toFixed(1)}</p>`;
+    html += `<p>Network Service Rate: ${(data.network_summary.avg_network_service_rate * 100).toFixed(1)}%</p>`;
+    
+    html += '<button onclick="closeNetworkResults()">Close</button></div>';
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeNetworkResults() {
+    const modal = document.querySelector('.network-results');
+    if (modal) modal.remove();
+}
+
+// Advanced Pattern Simulation
+async function simulateAdvancedPattern() {
+    const scenarioType = prompt('Enter scenario: surabaya_morning, rainy_season, weekend_mall, concert_venue, or road_construction', 'surabaya_morning');
+    
+    if (!scenarioType) return;
+    
+    document.getElementById('loading').style.display = 'block';
+    
+    try {
+        const response = await fetch(`/advanced/simulate/${scenarioType}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                simulations: 1000,
+                simulation_minutes: 240
+            })
+        });
+        
+        const data = await response.json();
+        displayResults(data);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Advanced simulation failed.');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+// Store current result globally for export
+let currentResult = null;
+let currentScenarioName = null;
+
+// Modified displayResults to store data
+const originalDisplayResults = displayResults;
+displayResults = function(data) {
+    currentResult = data;
+    currentScenarioName = data.scenario_name || 'simulation';
+    originalDisplayResults(data);
+    
+    // Add export buttons if not present
+    if (!document.getElementById('exportButtons')) {
+        const exportDiv = document.createElement('div');
+        exportDiv.id = 'exportButtons';
+        exportDiv.className = 'button-group';
+        exportDiv.style.marginTop = '20px';
+        exportDiv.innerHTML = `
+            <button class="btn btn-secondary" onclick="exportToExcel(currentResult, currentScenarioName)">
+                📊 Export to Excel
+            </button>
+            <button class="btn btn-secondary" onclick="exportToPDF(currentResult, currentScenarioName)">
+                📄 Export to PDF
+            </button>
+        `;
+        document.getElementById('results').appendChild(exportDiv);
+    }
+};
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadScenario();
+    
+    // Add advanced feature buttons
+    const controlPanel = document.querySelector('.controls-panel');
+    if (controlPanel) {
+        const advancedDiv = document.createElement('div');
+        advancedDiv.className = 'control-group';
+        advancedDiv.innerHTML = `
+            <h3 style="margin-top: 30px; color: #2196F3;">Advanced Features</h3>
+            <button class="btn btn-secondary" onclick="viewHistory()" style="width: 100%; margin-bottom: 10px;">
+                📜 View History
+            </button>
+            <button class="btn btn-secondary" onclick="simulateNetwork()" style="width: 100%; margin-bottom: 10px;">
+                🌐 Network Simulation
+            </button>
+            <button class="btn btn-secondary" onclick="simulateAdvancedPattern()" style="width: 100%; margin-bottom: 10px;">
+                🚀 Advanced Patterns
+            </button>
+        `;
+        controlPanel.appendChild(advancedDiv);
+    }
 });
